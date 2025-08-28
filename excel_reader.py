@@ -1,0 +1,436 @@
+import pandas as pd
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import os
+from datetime import datetime
+import openpyxl
+
+
+def select_excel_file():
+    """
+    打开文件选择对话框，让用户选择Excel文件
+    
+    Returns:
+        str: 选中的文件路径，如果用户取消则返回None
+    """
+    # 创建tkinter根窗口（隐藏）
+    root = tk.Tk()
+    root.withdraw()  # 隐藏主窗口
+    
+    try:
+        # 打开文件选择对话框
+        file_path = filedialog.askopenfilename(
+            title="选择Excel文件",
+            initialdir=os.getcwd(),
+            filetypes=[
+                ("Excel文件", "*.xlsx *.xls"),
+                ("Excel 2007-365", "*.xlsx"),
+                ("Excel 97-2003", "*.xls"),
+                ("所有文件", "*.*")
+            ]
+        )
+        
+        # 销毁根窗口
+        root.destroy()
+        
+        # 如果用户选择了文件，返回路径；否则返回None
+        return file_path if file_path else None
+        
+    except Exception as e:
+        root.destroy()
+        messagebox.showerror("错误", f"文件选择过程中出现错误：{str(e)}")
+        return None
+
+
+def read_excel_data(file_path):
+    """
+    读取Excel文件第一个工作表的所有数据
+    
+    Args:
+        file_path (str): Excel文件路径
+        
+    Returns:
+        pandas.DataFrame: 包含Excel数据的DataFrame对象，出错时返回None
+    """
+    try:
+        # 检查文件是否存在
+        if not os.path.exists(file_path):
+            messagebox.showerror("错误", f"文件不存在：{file_path}")
+            return None
+        
+        # 读取Excel文件第一个工作表
+        df = pd.read_excel(
+            file_path,
+            sheet_name=0,  # 读取第一个工作表
+            engine='openpyxl'  # 使用openpyxl引擎
+        )
+        
+        return df
+        
+    except FileNotFoundError:
+        messagebox.showerror("错误", f"找不到指定文件：{file_path}")
+        return None
+    except pd.errors.EmptyDataError:
+        messagebox.showerror("错误", "Excel文件为空或无有效数据")
+        return None
+    except Exception as e:
+        messagebox.showerror("错误", f"读取Excel文件时出现错误：{str(e)}")
+        return None
+
+
+def load_excel_with_gui():
+    """
+    整合文件选择和数据读取功能的主函数
+    
+    Returns:
+        pandas.DataFrame: 包含Excel数据的DataFrame对象，出错或取消时返回None
+    """
+    # 选择文件
+    file_path = select_excel_file()
+    
+    if file_path is None:
+        print("用户取消了文件选择")
+        return None
+    
+    print(f"选择的文件：{file_path}")
+    
+    # 读取数据
+    df = read_excel_data(file_path)
+    
+    if df is not None:
+        print(f"成功读取Excel文件，数据形状：{df.shape}")
+        print("数据预览：")
+        print(df.head())
+        return df
+    else:
+        print("读取Excel文件失败")
+        return None
+
+
+def detect_duplicate_ips(df):
+    """
+    检测DataFrame中第二列IP地址的重复情况
+    
+    Args:
+        df (pandas.DataFrame): 包含IP数据的DataFrame
+        
+    Returns:
+        dict: 重复信息字典，格式为 {行索引: 标记文本}
+    """
+    try:
+        # 提取第二列从第三行开始的IP数据（跳过表头）
+        ip_column = df.iloc[2:, 1]  # 从索引2开始，第二列（索引1）
+        
+        # 创建包含原始索引的IP数据
+        ip_data = ip_column.reset_index()
+        ip_data.columns = ['original_index', 'ip']
+        ip_data = ip_data.dropna()  # 移除空值
+        
+        duplicate_info = {}
+        
+        # 检查每个IP的重复情况
+        for ip in ip_data['ip'].unique():
+            positions = ip_data[ip_data['ip'] == ip]['original_index'].tolist()
+            
+            if len(positions) > 1:  # 如果有重复
+                # 转换为Excel行号（原始索引 + 1）
+                excel_rows = [pos + 1 for pos in positions]
+                max_row = max(excel_rows)
+                other_rows = [r for r in excel_rows if r != max_row]
+                
+                # 生成标记文本
+                mark_text = f"与第{','.join(map(str, other_rows))}行重复"
+                
+                # 保存标记信息（使用原始DataFrame索引）
+                mark_row_index = max_row - 1  # 转换回DataFrame索引
+                duplicate_info[mark_row_index] = mark_text
+        
+        return duplicate_info
+        
+    except Exception as e:
+        print(f"检测重复IP时出现错误：{str(e)}")
+        return {}
+
+
+def add_duplicate_marks(df, duplicate_info):
+    """
+    在DataFrame副本的最后一列添加重复标记
+    
+    Args:
+        df (pandas.DataFrame): 原始DataFrame
+        duplicate_info (dict): 重复信息字典
+        
+    Returns:
+        pandas.DataFrame: 添加标记后的DataFrame副本
+    """
+    try:
+        # 创建DataFrame副本
+        df_copy = df.copy()
+        
+        # 在最后一列添加重复标记
+        for row_index, mark_text in duplicate_info.items():
+            df_copy.iloc[row_index, -1] = mark_text
+        
+        return df_copy
+        
+    except Exception as e:
+        print(f"添加重复标记时出现错误：{str(e)}")
+        return df
+
+
+def save_processed_excel(df, original_file_path):
+    """
+    保存处理后的Excel文件
+    
+    Args:
+        df (pandas.DataFrame): 处理后的DataFrame
+        original_file_path (str): 原文件路径
+        
+    Returns:
+        tuple: (成功状态, 新文件路径)
+    """
+    try:
+        # 生成新文件名
+        file_dir = os.path.dirname(original_file_path)
+        file_name = os.path.basename(original_file_path)
+        name_without_ext, ext = os.path.splitext(file_name)
+        new_file_name = f"{name_without_ext}_checked{ext}"
+        new_file_path = os.path.join(file_dir, new_file_name)
+        
+        # 保存文件
+        df.to_excel(new_file_path, index=False, engine='openpyxl')
+        
+        return True, new_file_path
+        
+    except Exception as e:
+        print(f"保存文件时出现错误：{str(e)}")
+        return False, None
+
+
+def show_duplicate_statistics(duplicate_info):
+    """
+    显示重复检查的统计信息
+    
+    Args:
+        duplicate_info (dict): 重复信息字典
+    """
+    print("\n" + "="*50)
+    print("IP重复检查统计报告")
+    print("="*50)
+    
+    if not duplicate_info:
+        print("✅ 未发现重复的IP地址")
+    else:
+        print(f"⚠️  发现 {len(duplicate_info)} 个重复标记位置")
+        print("\n详细信息：")
+        
+        for row_index, mark_text in sorted(duplicate_info.items()):
+            excel_row = row_index + 1
+            print(f"  第{excel_row}行: {mark_text}")
+    
+    print("="*50)
+
+
+def get_excel_column_letter(col_index):
+    """
+    将列索引转换为Excel列字母
+    
+    Args:
+        col_index (int): 列索引（0-based）
+        
+    Returns:
+        str: Excel列字母（如：0→A, 25→Z, 26→AA）
+    """
+    result = ""
+    while col_index >= 0:
+        result = chr(65 + col_index % 26) + result
+        col_index = col_index // 26 - 1
+    return result
+
+
+def save_processed_excel_v2(duplicate_info, original_file_path):
+    """
+    使用openpyxl精确修改Excel文件，保持原有格式
+    
+    Args:
+        duplicate_info (dict): 重复信息字典
+        original_file_path (str): 原文件路径
+        
+    Returns:
+        tuple: (成功状态, 新文件路径)
+    """
+    try:
+        # 生成新文件名
+        file_dir = os.path.dirname(original_file_path)
+        file_name = os.path.basename(original_file_path)
+        name_without_ext, ext = os.path.splitext(file_name)
+        new_file_name = f"{name_without_ext}_checked{ext}"
+        new_file_path = os.path.join(file_dir, new_file_name)
+        
+        # 使用openpyxl打开原文件
+        print(f"正在打开原文件：{original_file_path}")
+        wb = openpyxl.load_workbook(original_file_path)
+        ws = wb.active
+        
+        print(f"原文件信息：工作表名='{ws.title}', 行数={ws.max_row}, 列数={ws.max_column}")
+        
+        # 确定最后一列的列号（假设pandas读取的是前18列，最后一列是第18列）
+        target_column = 18  # 第18列（R列）
+        
+        # 修改需要标记的单元格
+        for row_index, mark_text in duplicate_info.items():
+            # pandas行索引转换为Excel行号（+1，因为Excel是1-based）
+            excel_row = row_index + 1
+            
+            # 写入标记文本到最后一列
+            ws.cell(row=excel_row, column=target_column, value=mark_text)
+            print(f"标记第{excel_row}行第{target_column}列：{mark_text}")
+        
+        # 保存文件
+        print(f"正在保存新文件：{new_file_path}")
+        wb.save(new_file_path)
+        wb.close()
+        
+        print(f"文件保存成功：{new_file_path}")
+        return True, new_file_path
+        
+    except Exception as e:
+        print(f"使用openpyxl保存文件时出现错误：{str(e)}")
+        return False, None
+
+
+def check_and_mark_duplicates():
+    """
+    整合所有重复检查功能的主函数
+    
+    Returns:
+        bool: 处理成功返回True，失败返回False
+    """
+    print("启动IP重复检查功能...")
+    
+    # 选择并读取Excel文件
+    file_path = select_excel_file()
+    if file_path is None:
+        print("用户取消了文件选择")
+        return False
+    
+    print(f"读取文件：{file_path}")
+    df = read_excel_data(file_path)
+    if df is None:
+        print("文件读取失败")
+        return False
+    
+    print(f"文件读取成功，数据形状：{df.shape}")
+    
+    # 检测重复IP
+    print("正在检测重复IP...")
+    duplicate_info = detect_duplicate_ips(df)
+    
+    # 显示统计信息
+    show_duplicate_statistics(duplicate_info)
+    
+    if duplicate_info:
+        # 添加重复标记
+        print("正在添加重复标记...")
+        df_marked = add_duplicate_marks(df, duplicate_info)
+        
+        # 保存处理后的文件
+        print("正在保存处理后的文件...")
+        success, new_file_path = save_processed_excel(df_marked, file_path)
+        
+        if success:
+            print(f"✅ 处理完成！新文件已保存为：{new_file_path}")
+            
+            # 显示成功消息框
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showinfo("处理完成", 
+                              f"IP重复检查完成！\n\n"
+                              f"发现 {len(duplicate_info)} 个重复标记\n"
+                              f"文件已保存为：\n{os.path.basename(new_file_path)}")
+            root.destroy()
+            
+            return True
+        else:
+            print("❌ 文件保存失败")
+            return False
+    else:
+        print("✅ 未发现重复IP，无需处理")
+        return True
+
+
+def check_and_mark_duplicates_v2():
+    """
+    使用openpyxl精确保存的重复检查主函数
+    
+    Returns:
+        bool: 处理成功返回True，失败返回False
+    """
+    print("启动IP重复检查功能（openpyxl版本）...")
+    
+    # 选择并读取Excel文件
+    file_path = select_excel_file()
+    if file_path is None:
+        print("用户取消了文件选择")
+        return False
+    
+    print(f"读取文件：{file_path}")
+    df = read_excel_data(file_path)
+    if df is None:
+        print("文件读取失败")
+        return False
+    
+    print(f"文件读取成功，数据形状：{df.shape}")
+    
+    # 检测重复IP
+    print("正在检测重复IP...")
+    duplicate_info = detect_duplicate_ips(df)
+    
+    # 显示统计信息
+    show_duplicate_statistics(duplicate_info)
+    
+    if duplicate_info:
+        # 使用openpyxl精确保存
+        print("正在使用openpyxl精确保存文件...")
+        success, new_file_path = save_processed_excel_v2(duplicate_info, file_path)
+        
+        if success:
+            print(f"✅ 处理完成！新文件已保存为：{new_file_path}")
+            
+            # 显示成功消息框
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showinfo("处理完成", 
+                              f"IP重复检查完成！\n\n"
+                              f"发现 {len(duplicate_info)} 个重复标记\n"
+                              f"文件已保存为：\n{os.path.basename(new_file_path)}")
+            root.destroy()
+            
+            return True
+        else:
+            print("❌ 文件保存失败")
+            return False
+    else:
+        print("✅ 未发现重复IP，无需处理")
+        return True
+
+
+# 使用示例和测试代码
+if __name__ == "__main__":
+    print("Excel文件读取程序启动...")
+    print("1. 基本读取功能测试")
+    
+    # 调用基本读取功能
+    data = load_excel_with_gui()
+    
+    if data is not None:
+        print("\n程序执行成功！")
+        print(f"数据类型：{type(data)}")
+        print(f"数据维度：{data.shape}")
+        print(f"列名：{list(data.columns)}")
+        
+        print("\n2. IP重复检查功能测试（openpyxl精确保存版本）")
+        # 调用新的重复检查功能
+        check_and_mark_duplicates_v2()
+    else:
+        print("\n程序执行结束，未获取到数据") 
