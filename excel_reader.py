@@ -110,6 +110,7 @@ def load_excel_with_gui():
 def detect_duplicate_ips(df):
     """
     检测DataFrame中第二列IP地址的重复情况
+    新逻辑：除最小行号外，所有重复行都需要标记
     
     Args:
         df (pandas.DataFrame): 包含IP数据的DataFrame
@@ -135,15 +136,18 @@ def detect_duplicate_ips(df):
             if len(positions) > 1:  # 如果有重复
                 # 转换为Excel行号（原始索引 + 1）
                 excel_rows = [pos + 1 for pos in positions]
-                max_row = max(excel_rows)
-                other_rows = [r for r in excel_rows if r != max_row]
+                min_row = min(excel_rows)  # 找到最小行号（不标记）
+                mark_rows = [r for r in excel_rows if r != min_row]  # 其他行都标记
                 
-                # 生成标记文本
-                mark_text = f"与第{','.join(map(str, other_rows))}行重复"
-                
-                # 保存标记信息（使用原始DataFrame索引）
-                mark_row_index = max_row - 1  # 转换回DataFrame索引
-                duplicate_info[mark_row_index] = mark_text
+                # 为每个需要标记的行生成标记文本
+                for mark_row in mark_rows:
+                    # 生成该行的标记文本（包含所有其他重复行）
+                    other_rows = [r for r in excel_rows if r != mark_row]
+                    mark_text = f"与第{','.join(map(str, other_rows))}行重复"
+                    
+                    # 保存标记信息（使用原始DataFrame索引）
+                    mark_row_index = mark_row - 1  # 转换回DataFrame索引
+                    duplicate_info[mark_row_index] = mark_text
         
         return duplicate_info
         
@@ -251,6 +255,7 @@ def get_excel_column_letter(col_index):
 def save_processed_excel_v2(duplicate_info, original_file_path):
     """
     使用openpyxl精确修改Excel文件，保持原有格式
+    新增第19列作为"处理方案"列进行标记
     
     Args:
         duplicate_info (dict): 重复信息字典
@@ -274,15 +279,19 @@ def save_processed_excel_v2(duplicate_info, original_file_path):
         
         print(f"原文件信息：工作表名='{ws.title}', 行数={ws.max_row}, 列数={ws.max_column}")
         
-        # 确定最后一列的列号（假设pandas读取的是前18列，最后一列是第18列）
-        target_column = 18  # 第18列（R列）
+        # 确定目标列为第19列（新增的处理方案列）
+        target_column = 19  # 第19列（S列）
+        
+        # 设置表头：在第1行第19列写入"处理方案"
+        ws.cell(row=1, column=target_column, value="处理方案")
+        print(f"设置表头：第1行第{target_column}列 = '处理方案'")
         
         # 修改需要标记的单元格
         for row_index, mark_text in duplicate_info.items():
             # pandas行索引转换为Excel行号（+1，因为Excel是1-based）
             excel_row = row_index + 1
             
-            # 写入标记文本到最后一列
+            # 写入标记文本到第19列
             ws.cell(row=excel_row, column=target_column, value=mark_text)
             print(f"标记第{excel_row}行第{target_column}列：{mark_text}")
         
@@ -292,6 +301,7 @@ def save_processed_excel_v2(duplicate_info, original_file_path):
         wb.close()
         
         print(f"文件保存成功：{new_file_path}")
+        print(f"新文件列数应为：{ws.max_column} (原{ws.max_column-1}列 + 新增1列)")
         return True, new_file_path
         
     except Exception as e:
