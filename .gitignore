@@ -1,1 +1,13 @@
 *.xlsx
+build/
+dist/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
+*.pyzwz
+*.spec
+*.exe
