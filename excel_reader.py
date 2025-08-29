@@ -122,20 +122,19 @@ def detect_duplicate_ips(df):
         # 提取第二列从第三行开始的IP数据（跳过表头）
         ip_column = df.iloc[2:, 1]  # 从索引2开始，第二列（索引1）
         
-        # 创建包含原始索引的IP数据
-        ip_data = ip_column.reset_index()
-        ip_data.columns = ['original_index', 'ip']
-        ip_data = ip_data.dropna()  # 移除空值
+        # 不重置索引，直接使用原始DataFrame索引
+        ip_data = ip_column.dropna()  # 只移除空值，保持原始索引
         
         duplicate_info = {}
         
         # 检查每个IP的重复情况
-        for ip in ip_data['ip'].unique():
-            positions = ip_data[ip_data['ip'] == ip]['original_index'].tolist()
+        for ip in ip_data.unique():
+            # 找到所有该IP的DataFrame索引位置
+            positions = ip_data[ip_data == ip].index.tolist()
             
             if len(positions) > 1:  # 如果有重复
-                # 转换为Excel行号（原始索引 + 1）
-                excel_rows = [pos + 1 for pos in positions]
+                # 转换为Excel行号（DataFrame索引 + 1）
+                excel_rows = [pos + 2 for pos in positions]
                 min_row = min(excel_rows)  # 找到最小行号（不标记）
                 mark_rows = [r for r in excel_rows if r != min_row]  # 其他行都标记
                 
@@ -145,7 +144,7 @@ def detect_duplicate_ips(df):
                     other_rows = [r for r in excel_rows if r != mark_row]
                     mark_text = f"与第{','.join(map(str, other_rows))}行重复"
                     
-                    # 保存标记信息（使用原始DataFrame索引）
+                    # 保存标记信息（使用DataFrame索引）
                     mark_row_index = mark_row - 1  # 转换回DataFrame索引
                     duplicate_info[mark_row_index] = mark_text
         
