@@ -4,6 +4,7 @@ from tkinter import filedialog, messagebox
 import os
 from datetime import datetime
 import openpyxl
+import re  
 
 
 def select_excel_file():
@@ -314,7 +315,7 @@ def preprocess_excel_data(df):
                 normalized_ip = normalize_ip(original_ip)
                 if original_ip != normalized_ip:
                     ip_changes[idx] = f"{original_ip} → {normalized_ip}"
-                processed_df.iloc[idx+2, 1] = normalized_ip
+                processed_df.iloc[idx, 1] = normalized_ip
             
             print(f"IP地址格式标准化完成，共处理 {len(ip_changes)} 个IP地址")
             
