@@ -296,32 +296,40 @@ def preprocess_excel_data(df):
         df (pandas.DataFrame): 原始Excel数据
         
     Returns:
-        pandas.DataFrame: 预处理后的DataFrame
+        tuple: (预处理后的DataFrame, IP变更字典)
     """
     try:
         # 复制DataFrame以避免修改原始数据
         processed_df = df.copy()
         
         # 假设IP地址在第二列（索引为1）
+        ip_changes = {}
         if processed_df.shape[1] > 1:
             # 从第三行开始处理（跳过表头）
             ip_column = processed_df.iloc[2:, 1]
             
-            # 应用normalize_ip函数标准化IP地址
-            processed_df.iloc[2:, 1] = ip_column.apply(normalize_ip)
+            # 应用normalize_ip函数标准化IP地址并记录处理情况
+            for idx in ip_column.index:
+                original_ip = ip_column.loc[idx]
+                normalized_ip = normalize_ip(original_ip)
+                if original_ip != normalized_ip:
+                    ip_changes[idx] = f"{original_ip} → {normalized_ip}"
+                processed_df.iloc[idx, 1] = normalized_ip
+            
+            print(f"IP地址格式标准化完成，共处理 {len(ip_changes)} 个IP地址")
             
             print("IP地址格式标准化完成")
         else:
             print("警告：数据列数不足，无法处理IP地址")
             
-        return processed_df
+        return processed_df, ip_changes
         
     except Exception as e:
         print(f"预处理数据时出现错误：{str(e)}")
-        return df  # 出错时返回原始数据
+        return df, ip_changes  # 出错时返回原始数据和已处理的变更
 
 
-def save_processed_excel_v2(duplicate_info, original_file_path):
+def save_processed_excel_v2(ip_changes, duplicate_info, original_file_path):
     """
     使用openpyxl精确修改Excel文件，保持原有格式
     新增第19列作为"处理方案"列进行标记
@@ -347,6 +355,29 @@ def save_processed_excel_v2(duplicate_info, original_file_path):
         ws = wb.active
         
         print(f"原文件信息：工作表名='{ws.title}', 行数={ws.max_row}, 列数={ws.max_column}")
+        
+        # 处理IP地址变更，修改第2列的IP地址
+        print(f"开始处理IP地址变更，共有 {len(ip_changes)} 个需要修改")
+        
+        # 遍历IP变更记录
+        for row_index, change_info in ip_changes.items():
+            # pandas行索引转换为Excel行号（+1，因为Excel是1-based）
+            excel_row = row_index + 2
+            
+            # 从变更信息中提取标准化后的IP地址
+            normalized_ip = change_info.split(" → ")[1]
+            
+            # 写入标准化后的IP地址到第2列
+            ws.cell(row=excel_row, column=2, value=normalized_ip)
+            print(f"修改第{excel_row}行第2列IP地址：{change_info}")
+        
+        if ip_changes:
+            print(f"IP地址变更处理完成，共修改 {len(ip_changes)} 个IP地址")
+        else:
+            print("没有需要修改的IP地址")
+
+
+
         
         # 确定目标列为第19列（新增的处理方案列）
         target_column = 19  # 第19列（S列）
@@ -402,6 +433,10 @@ def check_and_mark_duplicates_v2():
     
     print(f"文件读取成功，数据形状：{df.shape}")
     
+    # 预处理数据
+    print("正在预处理数据...")
+    df, ip_changes = preprocess_excel_data(df)
+    
     # 检测重复IP
     print("正在检测重复IP...")
     duplicate_info = detect_duplicate_ips(df)
@@ -412,7 +447,7 @@ def check_and_mark_duplicates_v2():
     if duplicate_info:
         # 使用openpyxl精确保存
         print("正在使用openpyxl精确保存文件...")
-        success, new_file_path = save_processed_excel_v2(duplicate_info, file_path)
+        success, new_file_path = save_processed_excel_v2(ip_changes, duplicate_info, file_path)
         
         if success:
             print(f"✅ 处理完成！新文件已保存为：{new_file_path}")
