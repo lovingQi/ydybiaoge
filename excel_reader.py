@@ -105,7 +105,42 @@ def load_excel_with_gui():
     else:
         print("读取Excel文件失败")
         return None
+ # 处理IP地址格式，统一为CIDR格式
+def normalize_ip(ip_str):
+    """
+    将IP地址统一为CIDR格式
 
+    Args:
+        ip_str (str): 原始IP字符串
+        
+    Returns:
+        str: 标准化后的IP字符串
+    """
+    if pd.isna(ip_str) or not isinstance(ip_str, str):
+        return ip_str
+        
+    ip_str = ip_str.strip()
+
+    # 情况1: ip/32 格式，如 36.134.205.246/32 - 保持不变
+    if re.match(r'^\d+\.\d+\.\d+\.\d+/32$', ip_str):
+        return ip_str
+        
+    # 情况2: 网段/24 格式，如 36.134.41.0/24 - 保持不变
+    if re.match(r'^\d+\.\d+\.\d+\.\d+/24$', ip_str):
+        return ip_str
+        
+    # 情况3: 纯IP格式，如 36.134.44.69 - 添加/32
+    if re.match(r'^\d+\.\d+\.\d+\.\d+$', ip_str):
+        return f"{ip_str}/32"
+        
+    # 情况4: 网段格式，如 36.134.41.0 - 添加/24
+    # 判断是否为网段（第四段为0）
+    ip_parts = ip_str.split('.')
+    if len(ip_parts) == 4 and ip_parts[3] == '0':
+        return f"{ip_str}/24"
+        
+    # 其他情况保持原样
+    return ip_str
 
 def detect_duplicate_ips(df):
     """
@@ -121,6 +156,10 @@ def detect_duplicate_ips(df):
     try:
         # 提取第二列从第三行开始的IP数据（跳过表头）
         ip_column = df.iloc[2:, 1]  # 从索引2开始，第二列（索引1）
+       
+        
+        # 应用IP格式标准化
+        ip_column = ip_column.apply(normalize_ip)
         
         # 不重置索引，直接使用原始DataFrame索引
         ip_data = ip_column.dropna()  # 只移除空值，保持原始索引
@@ -249,6 +288,37 @@ def get_excel_column_letter(col_index):
         result = chr(65 + col_index % 26) + result
         col_index = col_index // 26 - 1
     return result
+def preprocess_excel_data(df):
+    """
+    对Excel数据进行预处理，主要是标准化IP地址格式
+    
+    Args:
+        df (pandas.DataFrame): 原始Excel数据
+        
+    Returns:
+        pandas.DataFrame: 预处理后的DataFrame
+    """
+    try:
+        # 复制DataFrame以避免修改原始数据
+        processed_df = df.copy()
+        
+        # 假设IP地址在第二列（索引为1）
+        if processed_df.shape[1] > 1:
+            # 从第三行开始处理（跳过表头）
+            ip_column = processed_df.iloc[2:, 1]
+            
+            # 应用normalize_ip函数标准化IP地址
+            processed_df.iloc[2:, 1] = ip_column.apply(normalize_ip)
+            
+            print("IP地址格式标准化完成")
+        else:
+            print("警告：数据列数不足，无法处理IP地址")
+            
+        return processed_df
+        
+    except Exception as e:
+        print(f"预处理数据时出现错误：{str(e)}")
+        return df  # 出错时返回原始数据
 
 
 def save_processed_excel_v2(duplicate_info, original_file_path):
@@ -284,6 +354,7 @@ def save_processed_excel_v2(duplicate_info, original_file_path):
         # 设置表头：在第1行第19列写入"处理方案"
         ws.cell(row=1, column=target_column, value="处理方案")
         print(f"设置表头：第1行第{target_column}列 = '处理方案'")
+
         
         # 修改需要标记的单元格
         for row_index, mark_text in duplicate_info.items():
@@ -306,66 +377,6 @@ def save_processed_excel_v2(duplicate_info, original_file_path):
     except Exception as e:
         print(f"使用openpyxl保存文件时出现错误：{str(e)}")
         return False, None
-
-
-def check_and_mark_duplicates():
-    """
-    整合所有重复检查功能的主函数
-    
-    Returns:
-        bool: 处理成功返回True，失败返回False
-    """
-    print("启动IP重复检查功能...")
-    
-    # 选择并读取Excel文件
-    file_path = select_excel_file()
-    if file_path is None:
-        print("用户取消了文件选择")
-        return False
-    
-    print(f"读取文件：{file_path}")
-    df = read_excel_data(file_path)
-    if df is None:
-        print("文件读取失败")
-        return False
-    
-    print(f"文件读取成功，数据形状：{df.shape}")
-    
-    # 检测重复IP
-    print("正在检测重复IP...")
-    duplicate_info = detect_duplicate_ips(df)
-    
-    # 显示统计信息
-    show_duplicate_statistics(duplicate_info)
-    
-    if duplicate_info:
-        # 添加重复标记
-        print("正在添加重复标记...")
-        df_marked = add_duplicate_marks(df, duplicate_info)
-        
-        # 保存处理后的文件
-        print("正在保存处理后的文件...")
-        success, new_file_path = save_processed_excel(df_marked, file_path)
-        
-        if success:
-            print(f"✅ 处理完成！新文件已保存为：{new_file_path}")
-            
-            # 显示成功消息框
-            root = tk.Tk()
-            root.withdraw()
-            messagebox.showinfo("处理完成", 
-                              f"IP重复检查完成！\n\n"
-                              f"发现 {len(duplicate_info)} 个重复标记\n"
-                              f"文件已保存为：\n{os.path.basename(new_file_path)}")
-            root.destroy()
-            
-            return True
-        else:
-            print("❌ 文件保存失败")
-            return False
-    else:
-        print("✅ 未发现重复IP，无需处理")
-        return True
 
 
 def check_and_mark_duplicates_v2():
@@ -428,18 +439,19 @@ def check_and_mark_duplicates_v2():
 if __name__ == "__main__":
     print("Excel文件读取程序启动...")
     print("1. 基本读取功能测试")
+    check_and_mark_duplicates_v2()
+
+    # # 调用基本读取功能
+    # data = load_excel_with_gui()
     
-    # 调用基本读取功能
-    data = load_excel_with_gui()
-    
-    if data is not None:
-        print("\n程序执行成功！")
-        print(f"数据类型：{type(data)}")
-        print(f"数据维度：{data.shape}")
-        print(f"列名：{list(data.columns)}")
+    # if data is not None:
+    #     print("\n程序执行成功！")
+    #     print(f"数据类型：{type(data)}")
+    #     print(f"数据维度：{data.shape}")
+    #     print(f"列名：{list(data.columns)}")
         
-        print("\n2. IP重复检查功能测试（openpyxl精确保存版本）")
-        # 调用新的重复检查功能
-        check_and_mark_duplicates_v2()
-    else:
-        print("\n程序执行结束，未获取到数据") 
+    #     print("\n2. IP重复检查功能测试（openpyxl精确保存版本）")
+    #     # 调用新的重复检查功能
+    #     check_and_mark_duplicates_v2()
+    # else:
+    #     print("\n程序执行结束，未获取到数据") 
