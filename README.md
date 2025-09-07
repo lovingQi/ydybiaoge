@@ -171,4 +171,4 @@ A: 输出文件保存在原Excel文件的同一目录下，文件名会添加相
 
 ## 许可证
 
-© 2024 Excel Processor Team. All Rights Reserved. 
+© 2024 你的名字. All Rights Reserved. 

@@ -336,12 +336,12 @@ Excel IP地址处理工具 v2.0 使用说明
 Excel IP地址处理工具 v2.0
 
 版本: 2.0.0
-作者: Excel Processor Team
+作者: xbl
 
 这是一个专业的Excel IP地址处理工具，
 支持IP地址标准化、重复检测、网段分析等功能。
 
-© 2024 All Rights Reserved
+© 2025 All Rights Reserved
         """
         messagebox.showinfo("关于", about_text)
     
