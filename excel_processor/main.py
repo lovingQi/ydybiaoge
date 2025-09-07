@@ -194,7 +194,7 @@ class ExcelProcessorApp:
         status = "成功" if success else "失败"
         
         if success:
-            result_summary = f"IP变更:{results.get('ip_changes', 0)} 重复:{results.get('duplicates', 0)} 包含:{results.get('containments', 0)}"
+            result_summary = f"IP变更:{results.get('ip_changes', 0)} 不一致网段:{results.get('inconsistencies', 0)} 重复IP:{results.get('duplicates', 0)} 网段包含:{results.get('containments', 0)}"
         else:
             result_summary = results.get('error', '处理失败')
         
