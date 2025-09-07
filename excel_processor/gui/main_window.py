@@ -93,11 +93,11 @@ class MainWindow:
         self.root.config(menu=menubar)
         
         # 文件菜单
-        file_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="文件", menu=file_menu)
-        file_menu.add_command(label="打开文件...", command=self.select_file, accelerator="Ctrl+O")
-        file_menu.add_separator()
-        file_menu.add_command(label="退出", command=self.root.quit, accelerator="Ctrl+Q")
+        self.file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="文件", menu=self.file_menu)
+        self.file_menu.add_command(label="打开文件...", command=self.select_file, accelerator="Ctrl+O")
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="退出", command=self.root.quit, accelerator="Ctrl+Q")
         
         # 工具菜单
         tools_menu = tk.Menu(menubar, tearoff=0)
@@ -344,6 +344,13 @@ Excel IP地址处理工具 v2.0
 © 2024 All Rights Reserved
         """
         messagebox.showinfo("关于", about_text)
+    
+    def update_file_menu_command(self, new_command):
+        """更新文件菜单中的打开文件命令"""
+        try:
+            self.file_menu.entryconfig(0, command=new_command)
+        except Exception as e:
+            print(f"更新菜单命令失败: {e}")
     
     def log_message(self, message):
         """添加日志消息"""

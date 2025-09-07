@@ -757,23 +757,30 @@ class ExcelProcessor:
             enhanced_logger.info(f"正在保存处理后文件：{new_file_path2}")
             wb.save(new_file_path2)
 
-            # 清除19、20、21、22列的内容
+            # 清除19、20、21、22列的内容 - 优化版本
             enhanced_logger.info("开始清除19、20、21、22列的内容...")
-            for row in range(1, ws.max_row + 1):
+            
+            # 删除整列而不是逐个清除单元格，这样更高效
+            columns_to_delete = []
+            for col in range(22, 18, -1):  # 从右到左删除列，避免索引变化
+                if col <= ws.max_column:
+                    columns_to_delete.append(col)
+            
+            for col in columns_to_delete:
                 if self.should_cancel:
                     return False, None
-                    
-                for col in range(19, 23):  # 19、20、21、22列
-                    if col <= ws.max_column:  # 确保列存在
-                        ws.cell(row=row, column=col).value = None
-            enhanced_logger.info("19、20、21、22列内容已清除")
+                ws.delete_cols(col)
+                
+            enhanced_logger.info("19、20、21、22列已删除")
             
-            # 删除第1列内容为空的行
+            # 删除第1列内容为空的行 - 优化版本
             enhanced_logger.info("开始删除第1列内容为空的行...")
+            
+            # 批量删除空行，提高效率
             rows_to_delete = []
             
-            # 先标记需要删除的行
-            for row in range(ws.max_row, 0, -1):  # 从底部向上遍历，避免删除时索引变化
+            # 先收集所有需要删除的行号
+            for row in range(3, ws.max_row + 1):  # 从第3行开始检查，保留表头
                 if self.should_cancel:
                     return False, None
                     
@@ -781,11 +788,17 @@ class ExcelProcessor:
                 if cell_value is None or (isinstance(cell_value, str) and cell_value.strip() == ""):
                     rows_to_delete.append(row)
             
-            # 删除标记的行
-            for row in rows_to_delete:
+            # 从后往前删除，避免索引变化
+            total_to_delete = len(rows_to_delete)
+            for i, row in enumerate(reversed(rows_to_delete)):
                 if self.should_cancel:
                     return False, None
                 ws.delete_rows(row)
+                
+                # 每删除50行输出一次进度
+                if total_to_delete > 50 and (i + 1) % 50 == 0:
+                    remaining = total_to_delete - (i + 1)
+                    enhanced_logger.info(f"删除进度: 已删除 {i + 1}/{total_to_delete} 行，还剩 {remaining} 行...")
             
             enhanced_logger.info(f"共删除了{len(rows_to_delete)}行（第1列为空的行）")
 

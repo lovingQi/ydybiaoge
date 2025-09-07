@@ -87,14 +87,8 @@ class ExcelProcessorApp:
         self.main_window.select_file = enhanced_select_file
         self.main_window.select_btn.config(command=enhanced_select_file)
         
-        # 更新菜单中的文件选择
-        try:
-            menubar = self.main_window.root.nametowidget(self.main_window.root['menu'])
-            file_menu = menubar.nametowidget(menubar.entryconfig(0)['menu'][4])
-            file_menu.entryconfig(0, command=enhanced_select_file)
-        except Exception as e:
-            # 如果菜单访问失败，忽略错误
-            enhanced_logger.warning(f"菜单绑定失败: {e}")
+        # 更新菜单中的文件选择命令
+        self.main_window.update_file_menu_command(enhanced_select_file)
     
     def start_processing(self):
         """开始处理文件"""
