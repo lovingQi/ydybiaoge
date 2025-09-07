@@ -1,0 +1,19 @@
+{
+    "window": {
+        "width": 1200,
+        "height": 800,
+        "min_width": 800,
+        "min_height": 600,
+        "title": "Excel IP地址处理工具 v2.0"
+    },
+    "processing": {
+        "auto_backup": true,
+        "max_history": 50,
+        "log_level": "INFO"
+    },
+    "ui": {
+        "theme": "default",
+        "font_size": 10,
+        "show_progress": true
+    }
+} 
