@@ -83,6 +83,11 @@ class ExcelProcessor:
             pandas.DataFrame: 包含Excel数据的DataFrame对象，出错时返回None
         """
         try:
+            # 检查是否需要取消
+            if self.should_cancel:
+                enhanced_logger.info("读取文件前检测到取消请求")
+                return None
+                
             # 检查文件是否存在
             if not os.path.exists(file_path):
                 enhanced_logger.error(f"文件不存在：{file_path}")
@@ -96,6 +101,11 @@ class ExcelProcessor:
                 sheet_name=0,  # 读取第一个工作表
                 engine='openpyxl'  # 使用openpyxl引擎
             )
+            
+            # 读取完成后再次检查是否需要取消
+            if self.should_cancel:
+                enhanced_logger.info("文件读取完成后检测到取消请求")
+                return None
             
             enhanced_logger.info(f"文件读取成功，数据形状：{df.shape}")
             return df
@@ -460,7 +470,16 @@ class ExcelProcessor:
                 # 步骤1: 读取文件
                 enhanced_logger.info(f"开始处理文件: {file_path}")
                 df = self.read_excel_data(file_path)
-                if df is None or self.should_cancel:
+                if df is None:
+                    if self.should_cancel:
+                        enhanced_logger.info("处理已取消")
+                        if callback:
+                            callback(False, {'error': '用户取消了操作'})
+                    return
+                if self.should_cancel:
+                    enhanced_logger.info("处理已取消")
+                    if callback:
+                        callback(False, {'error': '用户取消了操作'})
                     return
                 
                 if self.progress_callback:
@@ -469,6 +488,9 @@ class ExcelProcessor:
                 # 步骤2: 预处理数据
                 df, ip_changes = self.preprocess_excel_data(df)
                 if self.should_cancel:
+                    enhanced_logger.info("预处理阶段检测到取消请求")
+                    if callback:
+                        callback(False, {'error': '用户取消了操作'})
                     return
                 
                 if self.progress_callback:
@@ -477,6 +499,9 @@ class ExcelProcessor:
                 # 步骤3: 检查网段一致性
                 inconsistency_info = self.check_subnet_consistency(df)
                 if self.should_cancel:
+                    enhanced_logger.info("网段一致性检查阶段检测到取消请求")
+                    if callback:
+                        callback(False, {'error': '用户取消了操作'})
                     return
                 
                 if self.progress_callback:
@@ -485,6 +510,9 @@ class ExcelProcessor:
                 # 步骤4: 检测重复IP
                 duplicate_info = self.detect_duplicate_ips(df)
                 if self.should_cancel:
+                    enhanced_logger.info("重复IP检测阶段检测到取消请求")
+                    if callback:
+                        callback(False, {'error': '用户取消了操作'})
                     return
                 
                 if self.progress_callback:
@@ -493,6 +521,9 @@ class ExcelProcessor:
                 # 步骤5: 检测网段包含关系
                 subnet_containment_info = self.detect_subnet_containment(df)
                 if self.should_cancel:
+                    enhanced_logger.info("网段包含关系检测阶段检测到取消请求")
+                    if callback:
+                        callback(False, {'error': '用户取消了操作'})
                     return
                 
                 if self.progress_callback:
@@ -505,6 +536,9 @@ class ExcelProcessor:
                 )
                 
                 if self.should_cancel:
+                    enhanced_logger.info("文件保存阶段检测到取消请求")
+                    if callback:
+                        callback(False, {'error': '用户取消了操作'})
                     return
                 
                 if self.progress_callback:
@@ -533,8 +567,15 @@ class ExcelProcessor:
                 if callback:
                     callback(False, {'error': str(e)})
             finally:
+                # 确保状态正确重置
+                was_cancelled = self.should_cancel
                 self.is_processing = False
                 self.should_cancel = False
+                
+                # 如果是取消操作，确保回调被调用
+                if was_cancelled and callback:
+                    enhanced_logger.info("处理线程结束时检测到取消状态")
+                    callback(False, {'error': '用户取消了操作'})
         
         # 启动处理线程
         self.processing_thread = threading.Thread(target=process_thread)

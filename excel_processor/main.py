@@ -132,6 +132,10 @@ class ExcelProcessorApp:
             # 更新UI状态
             self.main_window.cancel_btn.config(state=tk.DISABLED)
             self.main_window.status_var.set("正在取消...")
+            
+            # 重置进度条
+            self.progress_callback.reset()
+            self.main_window.progress_var.set("已取消")
     
     def on_processing_complete(self, success, results):
         """处理完成回调"""
@@ -161,11 +165,18 @@ class ExcelProcessorApp:
                               f"网段包含: {results.get('containments', 0)} 个\n\n"
                               f"结果文件: {os.path.basename(results.get('output_file', ''))}")
         else:
-            enhanced_logger.error("处理失败")
             error_msg = results.get('error', '未知错误')
-            self.update_stats_display(f"处理失败: {error_msg}")
+            if '用户取消了操作' in error_msg:
+                enhanced_logger.info("用户已取消处理")
+                self.update_stats_display("处理已取消")
+                self.main_window.status_var.set("已取消")
+                # 不显示错误对话框，因为这是用户主动取消的
+            else:
+                enhanced_logger.error("处理失败")
+                self.update_stats_display(f"处理失败: {error_msg}")
+                messagebox.showerror("处理失败", f"文件处理失败：{error_msg}")
+            
             self.add_to_history(success, results)
-            messagebox.showerror("处理失败", f"文件处理失败：{error_msg}")
     
     def format_results(self, results):
         """格式化处理结果"""
