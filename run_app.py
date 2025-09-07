@@ -16,9 +16,33 @@ try:
     from excel_processor.main import main
     main()
 except ImportError as e:
-    print(f"导入错误：{e}")
-    print("请确保已安装所需依赖：pip install pandas openpyxl")
-    input("按回车键退出...")
+    try:
+        print(f"导入错误：{e}")
+        print("请确保已安装所需依赖：pip install pandas openpyxl")
+        input("按回车键退出...")
+    except:
+        # 在打包环境中可能无法使用print和input
+        import tkinter as tk
+        from tkinter import messagebox
+        try:
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror("导入错误", f"导入错误：{e}\n请确保已安装所需依赖")
+            root.destroy()
+        except:
+            pass
 except Exception as e:
-    print(f"程序运行错误：{e}")
-    input("按回车键退出...") 
+    try:
+        print(f"程序运行错误：{e}")
+        input("按回车键退出...")
+    except:
+        # 在打包环境中可能无法使用print和input
+        import tkinter as tk
+        from tkinter import messagebox
+        try:
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror("程序错误", f"程序运行错误：{e}")
+            root.destroy()
+        except:
+            pass 

@@ -26,10 +26,14 @@ def build_exe():
         '--windowed',                   # 不显示控制台窗口
         '--name=ExcelIPProcessor',      # exe文件名
         '--icon=icon.ico',              # 图标文件（如果有的话）
-        '--add-data=excel_processor/resources;excel_processor/resources',  # 包含配置文件
+        '--add-data=excel_processor;excel_processor',  # 包含整个excel_processor目录
         '--hidden-import=pandas',       # 确保pandas被包含
         '--hidden-import=openpyxl',     # 确保openpyxl被包含
         '--hidden-import=tkinter',      # 确保tkinter被包含
+        '--hidden-import=excel_processor.gui.main_window',  # 显式包含GUI模块
+        '--hidden-import=excel_processor.core.processor',   # 显式包含核心处理模块
+        '--hidden-import=excel_processor.utils.logger',     # 显式包含日志模块
+        '--hidden-import=excel_processor.gui.styles',       # 显式包含样式模块
         '--clean',                      # 清理临时文件
         'run_app.py'                    # 主程序入口
     ]
@@ -78,7 +82,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('excel_processor/resources/config.json', 'excel_processor/resources'),
+        ('excel_processor', 'excel_processor'),
     ],
     hiddenimports=[
         'pandas',
@@ -87,6 +91,10 @@ a = Analysis(
         'tkinter.ttk',
         'tkinter.filedialog',
         'tkinter.messagebox',
+        'excel_processor.gui.main_window',
+        'excel_processor.core.processor',
+        'excel_processor.utils.logger',
+        'excel_processor.gui.styles',
     ],
     hookspath=[],
     hooksconfig={},

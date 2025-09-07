@@ -63,8 +63,14 @@ class ExcelProcessorApp:
             
         except Exception as e:
             error_msg = f"应用程序初始化失败：{str(e)}"
-            print(error_msg)
-            messagebox.showerror("初始化错误", error_msg)
+            try:
+                print(error_msg)
+            except:
+                pass  # 在打包环境中print可能失败
+            try:
+                messagebox.showerror("初始化错误", error_msg)
+            except:
+                pass  # GUI可能还未初始化
             return False
     
     def bind_events(self):
@@ -247,7 +253,10 @@ def main():
                 return
             
             error_msg = f"未处理的异常：{exc_type.__name__}: {exc_value}"
-            print(error_msg)
+            try:
+                print(error_msg)
+            except:
+                pass  # 在打包环境中print可能失败
             
             # 如果GUI可用，显示错误对话框
             try:
@@ -266,7 +275,10 @@ def main():
         
     except Exception as e:
         error_msg = f"程序启动失败：{str(e)}"
-        print(error_msg)
+        try:
+            print(error_msg)
+        except:
+            pass  # 在打包环境中print可能失败
         try:
             root = tk.Tk()
             root.withdraw()

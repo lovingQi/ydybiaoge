@@ -10,7 +10,7 @@ if %errorlevel% neq 0 (
 )
 
 echo 开始打包...
-pyinstaller --onefile --windowed --name=ExcelIPProcessor --add-data="excel_processor/resources;excel_processor/resources" --hidden-import=pandas --hidden-import=openpyxl --hidden-import=tkinter --clean run_app.py
+pyinstaller --onefile --windowed --name=ExcelIPProcessor --add-data="excel_processor;excel_processor" --hidden-import=pandas --hidden-import=openpyxl --hidden-import=tkinter --hidden-import=excel_processor.gui.main_window --hidden-import=excel_processor.core.processor --hidden-import=excel_processor.utils.logger --hidden-import=excel_processor.gui.styles --clean run_app.py
 
 echo 打包完成！
 echo exe文件位置: dist\ExcelIPProcessor.exe

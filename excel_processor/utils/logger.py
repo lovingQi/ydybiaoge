@@ -9,15 +9,29 @@ class GUILogHandler:
     
     def __init__(self, log_widget=None):
         self.log_widget = log_widget
-        self.original_stdout = sys.stdout
-        self.original_stderr = sys.stderr
+        # 在打包环境中，sys.stdout可能为None，需要处理这种情况
+        self.original_stdout = sys.stdout if sys.stdout is not None else sys.__stdout__
+        self.original_stderr = sys.stderr if sys.stderr is not None else sys.__stderr__
+        
+        # 如果仍然为None，创建一个虚拟的输出对象
+        if self.original_stdout is None:
+            self.original_stdout = io.StringIO()
+        if self.original_stderr is None:
+            self.original_stderr = io.StringIO()
+            
         self.log_buffer = io.StringIO()
         
     def write(self, text):
         """重定向的写入方法"""
-        # 写入到原始输出（保持控制台输出）
-        self.original_stdout.write(text)
-        self.original_stdout.flush()
+        # 安全地写入到原始输出（保持控制台输出）
+        try:
+            if self.original_stdout and hasattr(self.original_stdout, 'write'):
+                self.original_stdout.write(text)
+                if hasattr(self.original_stdout, 'flush'):
+                    self.original_stdout.flush()
+        except (AttributeError, OSError):
+            # 在打包环境中可能出现写入错误，忽略
+            pass
         
         # 如果有GUI组件，也写入到GUI
         if self.log_widget and text.strip():
@@ -25,7 +39,12 @@ class GUILogHandler:
     
     def flush(self):
         """刷新缓冲区"""
-        self.original_stdout.flush()
+        try:
+            if self.original_stdout and hasattr(self.original_stdout, 'flush'):
+                self.original_stdout.flush()
+        except (AttributeError, OSError):
+            # 在打包环境中可能出现刷新错误，忽略
+            pass
     
     def write_to_gui(self, message):
         """将消息写入GUI日志组件"""
@@ -60,8 +79,14 @@ class GUILogHandler:
     
     def restore_output(self):
         """恢复原始输出"""
-        sys.stdout = self.original_stdout
-        sys.stderr = self.original_stderr
+        try:
+            if self.original_stdout is not None:
+                sys.stdout = self.original_stdout
+            if self.original_stderr is not None:
+                sys.stderr = self.original_stderr
+        except (AttributeError, OSError):
+            # 在打包环境中可能出现恢复错误，忽略
+            pass
     
     def set_log_widget(self, widget):
         """设置日志显示组件"""
@@ -171,8 +196,13 @@ class EnhancedLogger:
         # 格式化消息
         formatted_message = f"[{level}] {message}"
         
-        # 输出到控制台和GUI
-        print(formatted_message)
+        # 安全地输出到控制台和GUI
+        try:
+            print(formatted_message)
+        except (AttributeError, OSError):
+            # 在打包环境中print可能失败，只写入到GUI
+            if gui_log_handler.log_widget:
+                gui_log_handler.write_to_gui(formatted_message)
         
         # 记录到标准日志
         if level == LogLevel.DEBUG:
