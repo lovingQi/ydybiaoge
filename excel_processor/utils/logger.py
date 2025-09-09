@@ -51,27 +51,36 @@ class GUILogHandler:
     
     def write_to_gui(self, message, level=None):
         """将消息写入GUI日志组件"""
+        # 如果没有指定级别，尝试从消息中提取
+        if not level:
+            level = self.extract_log_level(message)
+        
         # 如果指定了级别，检查是否应该显示
         if level and not self.should_log(level):
             return
             
         if self.log_widget:
             try:
-                timestamp = datetime.now().strftime("%H:%M:%S")
-                
-                # 根据日志级别设置颜色标签
-                color_tag = self.get_color_tag(level) if level else ""
-                formatted_message = f"[{timestamp}] {message}\n"
+                # 如果消息中没有时间戳，添加时间戳
+                if not message.startswith('[') or '] ' not in message[:12]:
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+                    formatted_message = f"[{timestamp}] {message}\n"
+                else:
+                    formatted_message = f"{message}\n"
                 
                 # 启用文本框编辑
                 self.log_widget.config(state='normal')
                 
-                # 插入新消息，如果有颜色标签则应用
+                # 插入新消息
                 start_pos = self.log_widget.index('end')
                 self.log_widget.insert('end', formatted_message)
-                if color_tag:
-                    end_pos = self.log_widget.index('end-1c')
-                    self.log_widget.tag_add(color_tag, start_pos, end_pos)
+                
+                # 应用颜色标签
+                if level:
+                    color_tag = self.get_color_tag(level)
+                    if color_tag:
+                        end_pos = self.log_widget.index('end-1c')
+                        self.log_widget.tag_add(color_tag, start_pos, end_pos)
                 
                 # 自动滚动到底部
                 self.log_widget.see('end')
@@ -84,7 +93,11 @@ class GUILogHandler:
                 
             except Exception as e:
                 # 如果GUI写入失败，至少保证控制台输出
-                self.original_stdout.write(f"GUI日志写入失败: {e}\n")
+                try:
+                    if self.original_stdout and hasattr(self.original_stdout, 'write'):
+                        self.original_stdout.write(f"GUI日志写入失败: {e}\n")
+                except:
+                    pass
     
     def get_color_tag(self, level):
         """根据日志级别获取颜色标签"""
@@ -99,11 +112,17 @@ class GUILogHandler:
     
     def configure_text_colors(self, text_widget):
         """配置文本组件的颜色标签"""
-        text_widget.tag_configure("debug", foreground="#888888")
-        text_widget.tag_configure("info", foreground="#E0E0E0")
-        text_widget.tag_configure("warning", foreground="#FFD700")
-        text_widget.tag_configure("error", foreground="#FF6B6B")
-        text_widget.tag_configure("critical", foreground="#FFFFFF", background="#FF4444")
+        # DEBUG - 灰色，较暗
+        text_widget.tag_configure("debug", foreground="#808080", font=("Consolas", 9))
+        # INFO - 浅灰色，正常
+        text_widget.tag_configure("info", foreground="#FFFFFF", font=("Consolas", 9))
+        # WARNING - 橙黄色，醒目
+        text_widget.tag_configure("warning", foreground="#FFA500", font=("Consolas", 9, "bold"))
+        # ERROR - 红色，醒目
+        text_widget.tag_configure("error", foreground="#FF4444", font=("Consolas", 9, "bold"))
+        # CRITICAL - 白字红底，非常醒目
+        text_widget.tag_configure("critical", foreground="#FFFFFF", background="#CC0000", 
+                                font=("Consolas", 9, "bold"))
     
     def redirect_output(self):
         """开始重定向输出"""
