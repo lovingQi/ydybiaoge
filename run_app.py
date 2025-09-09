@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Excel IP地址处理工具 v2.0 启动脚本
+Excel IP地址处理工具 v2.1 启动脚本
 """
 
 import sys

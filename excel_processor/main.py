@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Excel IP地址处理工具 v2.0
+Excel IP地址处理工具 v2.1
 主程序入口
 
 功能：
@@ -58,7 +58,7 @@ class ExcelProcessorApp:
             # 绑定事件处理
             self.bind_events()
             
-            enhanced_logger.info("Excel IP地址处理工具 v2.0 初始化完成")
+            enhanced_logger.info("Excel IP地址处理工具 v2.1 初始化完成")
             return True
             
         except Exception as e:

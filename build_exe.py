@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Excel IP地址处理工具 v2.0 打包脚本
+Excel IP地址处理工具 v2.1 打包脚本
 使用PyInstaller将程序打包为exe文件
 """
 

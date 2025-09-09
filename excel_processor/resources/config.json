@@ -4,7 +4,7 @@
         "height": 800,
         "min_width": 800,
         "min_height": 600,
-        "title": "Excel IP地址处理工具 v2.0"
+        "title": "Excel IP地址处理工具 v2.1"
     },
     "processing": {
         "auto_backup": true,

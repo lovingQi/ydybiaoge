@@ -32,7 +32,7 @@ class MainWindow:
         except Exception as e:
             print(f"加载配置文件失败: {e}")
             return {
-                "window": {"width": 1200, "height": 800, "title": "Excel IP地址处理工具 v2.0"},
+                "window": {"width": 1200, "height": 800, "title": "Excel IP地址处理工具 v2.1"},
                 "ui": {"theme": "default", "font_size": 10}
             }
     
@@ -41,7 +41,7 @@ class MainWindow:
         window_config = self.config.get("window", {})
         
         # 设置窗口标题和大小
-        self.root.title(window_config.get("title", "Excel IP地址处理工具 v2.0"))
+        self.root.title(window_config.get("title", "Excel IP地址处理工具 v2.1"))
         self.root.geometry(f"{window_config.get('width', 1200)}x{window_config.get('height', 800)}")
         self.root.minsize(window_config.get('min_width', 800), window_config.get('min_height', 600))
         
@@ -309,7 +309,7 @@ class MainWindow:
     def show_help(self):
         """显示帮助"""
         help_text = """
-Excel IP地址处理工具 v2.0 使用说明
+Excel IP地址处理工具 v2.1 使用说明
 
 主要功能：
 1. IP地址格式标准化
@@ -333,9 +333,9 @@ Excel IP地址处理工具 v2.0 使用说明
     def show_about(self):
         """显示关于信息"""
         about_text = """
-Excel IP地址处理工具 v2.0
+Excel IP地址处理工具 v2.1
 
-版本: 2.0.0
+版本: 2.1.0
 作者: xbl
 
 这是一个专业的Excel IP地址处理工具，

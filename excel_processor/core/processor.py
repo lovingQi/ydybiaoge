@@ -173,11 +173,11 @@ class ExcelProcessor:
                 
             enhanced_logger.info("开始检测重复IP地址...")
             
-            # 提取第二列从第三行开始的IP数据（跳过表头）
-            ip_column = df.iloc[2:, 1]  # 从索引2开始，第二列（索引1）
+            # 提取第二列从第二行开始的IP数据（跳过表头）
+            ip_column = df.iloc[1:, 1]  # 从索引1开始，第二列（索引1）
             
             # 提取第五列运营商数据
-            isp_column = df.iloc[2:, 4]  # 从索引2开始，第五列（索引4）
+            isp_column = df.iloc[1:, 4]  # 从索引1开始，第五列（索引4）
             
             # 不重置索引，直接使用原始DataFrame索引
             ip_data = ip_column.dropna()  # 只移除空值，保持原始索引
@@ -203,7 +203,7 @@ class ExcelProcessor:
                     for i in range(1, len(excel_rows)):  # 从第二个开始（跳过最小行号）
                         current_row = excel_rows[i]
                         current_row_index = current_row - 2  # 转回DataFrame索引
-                        current_isp = isp_column.iloc[current_row_index - 2]  # 当前行的运营商
+                        current_isp = isp_column.iloc[current_row_index - 1]  # 当前行的运营商
                         
                         # 检查是否需要标记（与前面行比较运营商）
                         should_mark = False
@@ -211,7 +211,7 @@ class ExcelProcessor:
                         for j in range(i):
                             prev_row = excel_rows[j]
                             prev_row_index = prev_row - 2  # 转回DataFrame索引
-                            prev_isp = isp_column.iloc[prev_row_index - 2]  # 前面行的运营商
+                            prev_isp = isp_column.iloc[prev_row_index - 1]  # 前面行的运营商
                             
                             if (current_isp == prev_isp):
                                 should_mark = True
@@ -263,27 +263,54 @@ class ExcelProcessor:
                 return {}
                 
             enhanced_logger.info("开始检测网段包含关系...")
+            
+            # # 调试：打印DataFrame前5列的前3行内容
+            # print("=== DataFrame前5列的前3行内容 ===")
+            # print(f"DataFrame总行数: {len(df)}")
+            # print(f"DataFrame总列数: {len(df.columns)}")
+            # print()
+            
+            # for i in range(min(3, len(df))):
+            #     print(f"第{i+1}行（索引{i}）:")
+            #     row_data = df.iloc[i, :5].tolist()
+            #     for j, value in enumerate(row_data):
+            #         print(f"  列{j+1}: {repr(value)}")
+            #     print()
+            
+            # print("使用iloc[:3, :5]的结果:")
+            # print(df.iloc[:3, :5])
+            # print()
+            
             containment_info = {}
 
-            # 提取第二列从第三行开始的IP数据（跳过表头）
-            ip_column = df.iloc[2:, 1]  # 从索引2开始，第二列（索引1）
+            # 提取第二列从第二行开始的IP数据（跳过表头）
+            
+            ip_column = df.iloc[1:, 1]  # 从索引1开始，第二列（索引1）
             
             # 提取第五列运营商数据
-            isp_column = df.iloc[2:, 4]  # 从索引2开始，第五列（索引4）
+            isp_column = df.iloc[1:, 4]  # 从索引1开始，第五列（索引4）
             
-            # 从第三行开始处理（跳过表头）
-            for idx in range(2, len(df)):
+            # 调试：打印第一个元素
+            print(f"ip_column的第一个元素: {ip_column.iloc[0]}")
+            print(f"isp_column的第一个元素: {isp_column.iloc[0]}")
+            print(f"ip_column的长度: {len(ip_column)}")
+            print(f"isp_column的长度: {len(isp_column)}")
+
+            # 从第二行开始处理（跳过表头）
+            for idx in range(1, len(df)):
                 if self.should_cancel:
                     break
                     
-                ip_value = ip_column.iloc[idx -2]
+                ip_value = ip_column.iloc[idx -1]
+                #print(f"检查ip: 当前行={idx+2}, ip={ip_value}")
                 # 检查是否为网段格式 (x.x.x.0/24)
                 if re.match(r'^\d+\.\d+\.\d+\.0/24$', ip_value):
                     # 提取网段前缀
                     prefix = ip_value.split('/')[0].rsplit('.', 1)[0] + '.'
                     
                     # 检查后续行是否被该网段包含
-                    current_isp = isp_column.iloc[idx -2]
+                    current_isp = isp_column.iloc[idx -1]
+                    print(f"检查网段包含关系: 当前行={idx+2}, 网段={ip_value}, 前缀={prefix}")
 
                     for next_idx in range(idx + 1, len(df)):
                         if self.should_cancel:
@@ -302,7 +329,7 @@ class ExcelProcessor:
                         # 检查是否被包含（以网段前缀开头）
                         if next_ip.startswith(prefix):
                             try:
-                                next_isp = isp_column.iloc[next_idx -2]
+                                next_isp = isp_column.iloc[next_idx -1]
      
                                 if (current_isp == next_isp):
                                     should_mark = True
@@ -355,8 +382,8 @@ class ExcelProcessor:
             enhanced_logger.info("开始检查网段一致性...")
             inconsistency_info = {}
             
-            # 从第三行开始处理（跳过表头）
-            for idx in range(2, len(df)):
+            # 从第二行开始处理（跳过表头）
+            for idx in range(1, len(df)):
                 if self.should_cancel:
                     break
                     
@@ -425,8 +452,8 @@ class ExcelProcessor:
             # 假设IP地址在第二列（索引为1）
             ip_changes = {}
             if processed_df.shape[1] > 1:
-                # 从第三行开始处理（跳过表头）
-                ip_column = processed_df.iloc[2:, 1]
+                # 从第二行开始处理（跳过表头）
+                ip_column = processed_df.iloc[1:, 1]
                 
                 # 应用normalize_ip函数标准化IP地址并记录处理情况
                 for idx in ip_column.index:
