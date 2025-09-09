@@ -192,18 +192,28 @@ class ExcelProcessor:
                 # 找到所有该IP的DataFrame索引位置
                 positions = ip_data[ip_data == ip].index.tolist()
                 
+                # 调试：打印当前IP和位置信息
+                print(f"检查IP: {ip}")
+                print(f"  DataFrame索引位置: {positions}")
+                print(f"  Excel行号: {[pos + 1 for pos in positions]}")
+                
                 if len(positions) > 1:  # 如果有重复
+                    print(f"  发现重复！共{len(positions)}个位置")
+                    
                     # 转换为Excel行号（DataFrame索引 + 1）
                     excel_rows = [pos + 2 for pos in positions]  # 转换为Excel行号
                     
                     # 按行号排序
                     excel_rows.sort()
+                    print(f"  处理后的Excel行号: {excel_rows}")
                     
                     # 为每个需要标记的行检查运营商
                     for i in range(1, len(excel_rows)):  # 从第二个开始（跳过最小行号）
                         current_row = excel_rows[i]
                         current_row_index = current_row - 2  # 转回DataFrame索引
                         current_isp = isp_column.iloc[current_row_index - 1]  # 当前行的运营商
+                        
+                        print(f"    检查第{current_row}行(Excel): DataFrame索引{current_row_index}, 运营商={current_isp}")
                         
                         # 检查是否需要标记（与前面行比较运营商）
                         should_mark = False
@@ -212,6 +222,8 @@ class ExcelProcessor:
                             prev_row = excel_rows[j]
                             prev_row_index = prev_row - 2  # 转回DataFrame索引
                             prev_isp = isp_column.iloc[prev_row_index - 1]  # 前面行的运营商
+                            
+                            print(f"      与第{prev_row}行比较: DataFrame索引{prev_row_index}, 运营商={prev_isp}")
                             
                             if (current_isp == prev_isp):
                                 should_mark = True
@@ -234,12 +246,16 @@ class ExcelProcessor:
                                 should_mark = True
                                 if not mark_text:
                                     mark_text += f"保留这行，与第{prev_row - 2}行重复，需删去运营商{prev_isp};"
-                            else:
-                                should_mark = False
+                            # else:
+                                # 如果当前比较不匹配，保持should_mark的当前值（不重置为False）
+                                # should_mark = should_mark  # 保持现有值
                         
                         if should_mark:                     
                             # 保存标记信息
                             duplicate_info[current_row_index] = mark_text
+                            print(f"    ✓ 标记第{current_row}行: {mark_text}")
+                        else:
+                            print(f"    ✗ 第{current_row}行不需要标记")
             
             enhanced_logger.info(f"重复IP检测完成，发现 {len(duplicate_info)} 个重复标记")
             return duplicate_info
@@ -310,7 +326,7 @@ class ExcelProcessor:
                     
                     # 检查后续行是否被该网段包含
                     current_isp = isp_column.iloc[idx -1]
-                    print(f"检查网段包含关系: 当前行={idx+2}, 网段={ip_value}, 前缀={prefix}")
+                    #print(f"检查网段包含关系: 当前行={idx+2}, 网段={ip_value}, 前缀={prefix}")
 
                     for next_idx in range(idx + 1, len(df)):
                         if self.should_cancel:
@@ -350,8 +366,8 @@ class ExcelProcessor:
                                     if "保留" in mark_text:
                                         mark_text = ""
                                     mark_text += f"删除这行，与第{idx}行的网段{prefix}重复，且运营商{next_isp}被其包含了;"
-                                else:
-                                    should_mark = False
+                                # else:
+                                #     should_mark = False
                                
                                 if should_mark:
                                     containment_info[next_idx] = mark_text
