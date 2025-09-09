@@ -9,6 +9,7 @@ class GUILogHandler:
     
     def __init__(self, log_widget=None):
         self.log_widget = log_widget
+        self.current_log_level = LogLevel.INFO  # 默认日志级别
         # 在打包环境中，sys.stdout可能为None，需要处理这种情况
         self.original_stdout = sys.stdout if sys.stdout is not None else sys.__stdout__
         self.original_stderr = sys.stderr if sys.stderr is not None else sys.__stderr__
@@ -46,18 +47,31 @@ class GUILogHandler:
             # 在打包环境中可能出现刷新错误，忽略
             pass
     
-    def write_to_gui(self, message):
+    def write_to_gui(self, message, level=None):
         """将消息写入GUI日志组件"""
+        # 如果指定了级别，检查是否应该显示
+        if level and not self.should_log(level):
+            return
+            
         if self.log_widget:
             try:
                 timestamp = datetime.now().strftime("%H:%M:%S")
+                
+                # 根据日志级别设置颜色标签
+                color_tag = self.get_color_tag(level) if level else ""
                 formatted_message = f"[{timestamp}] {message}\n"
                 
                 # 启用文本框编辑
                 self.log_widget.config(state='normal')
                 
-                # 插入新消息
-                self.log_widget.insert('end', formatted_message)
+                # 插入新消息，如果有颜色标签则应用
+                if color_tag:
+                    start_pos = self.log_widget.index('end-1c')
+                    self.log_widget.insert('end', formatted_message)
+                    end_pos = self.log_widget.index('end-1c')
+                    self.log_widget.tag_add(color_tag, start_pos, end_pos)
+                else:
+                    self.log_widget.insert('end', formatted_message)
                 
                 # 自动滚动到底部
                 self.log_widget.see('end')
@@ -71,6 +85,25 @@ class GUILogHandler:
             except Exception as e:
                 # 如果GUI写入失败，至少保证控制台输出
                 self.original_stdout.write(f"GUI日志写入失败: {e}\n")
+    
+    def get_color_tag(self, level):
+        """根据日志级别获取颜色标签"""
+        color_map = {
+            LogLevel.DEBUG: "debug",
+            LogLevel.INFO: "info", 
+            LogLevel.WARNING: "warning",
+            LogLevel.ERROR: "error",
+            LogLevel.CRITICAL: "critical"
+        }
+        return color_map.get(level, "")
+    
+    def configure_text_colors(self, text_widget):
+        """配置文本组件的颜色标签"""
+        text_widget.tag_configure("debug", foreground="gray")
+        text_widget.tag_configure("info", foreground="white")
+        text_widget.tag_configure("warning", foreground="yellow")
+        text_widget.tag_configure("error", foreground="red")
+        text_widget.tag_configure("critical", foreground="red", background="yellow")
     
     def redirect_output(self):
         """开始重定向输出"""
@@ -91,6 +124,17 @@ class GUILogHandler:
     def set_log_widget(self, widget):
         """设置日志显示组件"""
         self.log_widget = widget
+    
+    def set_log_level(self, level):
+        """设置日志级别"""
+        if level in LogLevel.LEVELS:
+            self.current_log_level = level
+    
+    def should_log(self, level):
+        """判断是否应该记录该级别的日志"""
+        current_priority = LogLevel.LEVELS.get(self.current_log_level, 20)
+        message_priority = LogLevel.LEVELS.get(level, 20)
+        return message_priority >= current_priority
 
 
 class ProgressCallback:
@@ -155,6 +199,15 @@ class LogLevel:
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+    
+    # 日志级别优先级（数字越大级别越高）
+    LEVELS = {
+        "DEBUG": 10,
+        "INFO": 20,
+        "WARNING": 30,
+        "ERROR": 40,
+        "CRITICAL": 50
+    }
 
 
 class EnhancedLogger:
@@ -202,7 +255,7 @@ class EnhancedLogger:
         except (AttributeError, OSError):
             # 在打包环境中print可能失败，只写入到GUI
             if gui_log_handler.log_widget:
-                gui_log_handler.write_to_gui(formatted_message)
+                gui_log_handler.write_to_gui(formatted_message, level)
         
         # 记录到标准日志
         if level == LogLevel.DEBUG:

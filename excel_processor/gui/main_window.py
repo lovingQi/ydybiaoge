@@ -104,6 +104,16 @@ class MainWindow:
         menubar.add_cascade(label="工具", menu=tools_menu)
         tools_menu.add_command(label="清空日志", command=self.clear_log)
         tools_menu.add_command(label="清空历史", command=self.clear_history)
+        tools_menu.add_separator()
+        
+        # 日志级别子菜单
+        log_level_menu = tk.Menu(tools_menu, tearoff=0)
+        tools_menu.add_cascade(label="日志级别", menu=log_level_menu)
+        
+        self.log_level_menu_var = tk.StringVar(value="INFO")
+        for level in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+            log_level_menu.add_radiobutton(label=level, variable=self.log_level_menu_var, 
+                                         value=level, command=self.on_menu_log_level_changed)
         
         # 帮助菜单
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -160,6 +170,20 @@ class MainWindow:
         ttk.Checkbutton(self.left_panel, text="显示详细进度", 
                        variable=self.show_progress_var).pack(anchor=tk.W, pady=2)
         
+        # 日志级别选择
+        ttk.Label(self.left_panel, text="日志级别:").pack(anchor=tk.W, pady=(10, 5))
+        self.log_level_var = tk.StringVar(value="INFO")
+        log_level_frame = ttk.Frame(self.left_panel)
+        log_level_frame.pack(anchor=tk.W, fill=tk.X, pady=2)
+        
+        self.log_level_combo = ttk.Combobox(log_level_frame, 
+                                          textvariable=self.log_level_var,
+                                          values=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                                          state="readonly",
+                                          width=10)
+        self.log_level_combo.pack(side=tk.LEFT)
+        self.log_level_combo.bind('<<ComboboxSelected>>', self.on_log_level_changed)
+        
         # 进度显示
         ttk.Label(self.left_panel, text="处理进度:").pack(anchor=tk.W, pady=(20, 5))
         self.progress_var = tk.StringVar(value="就绪")
@@ -193,6 +217,10 @@ class MainWindow:
         
         self.log_text = tk.Text(log_container, wrap=tk.WORD, state=tk.DISABLED)
         AppStyles.configure_text_widget(self.log_text, 'log')
+        
+        # 配置日志颜色标签
+        self.configure_log_colors()
+        
         log_scrollbar = ttk.Scrollbar(log_container, orient=tk.VERTICAL, command=self.log_text.yview)
         self.log_text.configure(yscrollcommand=log_scrollbar.set)
         
@@ -351,6 +379,30 @@ Excel IP地址处理工具 v2.1
             self.file_menu.entryconfig(0, command=new_command)
         except Exception as e:
             print(f"更新菜单命令失败: {e}")
+    
+    def configure_log_colors(self):
+        """配置日志颜色标签"""
+        self.log_text.tag_configure("debug", foreground="gray")
+        self.log_text.tag_configure("info", foreground="#E0E0E0")
+        self.log_text.tag_configure("warning", foreground="yellow")
+        self.log_text.tag_configure("error", foreground="red")
+        self.log_text.tag_configure("critical", foreground="red", background="yellow")
+    
+    def on_log_level_changed(self, event=None):
+        """日志级别改变时的回调"""
+        from utils.logger import gui_log_handler
+        new_level = self.log_level_var.get()
+        gui_log_handler.set_log_level(new_level)
+        self.log_level_menu_var.set(new_level)  # 同步菜单选择
+        self.log_message(f"日志级别已设置为: {new_level}")
+    
+    def on_menu_log_level_changed(self):
+        """从菜单改变日志级别时的回调"""
+        from utils.logger import gui_log_handler
+        new_level = self.log_level_menu_var.get()
+        gui_log_handler.set_log_level(new_level)
+        self.log_level_var.set(new_level)  # 同步下拉框选择
+        self.log_message(f"日志级别已设置为: {new_level}")
     
     def log_message(self, message):
         """添加日志消息"""

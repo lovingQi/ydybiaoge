@@ -43,6 +43,13 @@ class ExcelProcessorApp:
             
             # 设置日志处理器
             gui_log_handler.set_log_widget(self.main_window.log_text)
+            gui_log_handler.configure_text_colors(self.main_window.log_text)
+            
+            # 从配置文件读取日志级别
+            config_log_level = self.main_window.config.get("logging", {}).get("default_level", "INFO")
+            gui_log_handler.set_log_level(config_log_level)
+            self.main_window.log_level_var.set(config_log_level)
+            
             gui_log_handler.redirect_output()
             
             # 创建进度回调

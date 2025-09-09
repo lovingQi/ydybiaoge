@@ -11,6 +11,11 @@
         "max_history": 50,
         "log_level": "INFO"
     },
+    "logging": {
+        "default_level": "INFO",
+        "show_debug": false,
+        "color_enabled": true
+    },
     "ui": {
         "theme": "default",
         "font_size": 10,
