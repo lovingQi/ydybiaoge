@@ -36,7 +36,9 @@ class GUILogHandler:
         
         # 如果有GUI组件，也写入到GUI
         if self.log_widget and text.strip():
-            self.write_to_gui(text.strip())
+            # 尝试从消息中提取日志级别
+            level = self.extract_log_level(text.strip())
+            self.write_to_gui(text.strip(), level)
     
     def flush(self):
         """刷新缓冲区"""
@@ -65,13 +67,11 @@ class GUILogHandler:
                 self.log_widget.config(state='normal')
                 
                 # 插入新消息，如果有颜色标签则应用
+                start_pos = self.log_widget.index('end')
+                self.log_widget.insert('end', formatted_message)
                 if color_tag:
-                    start_pos = self.log_widget.index('end-1c')
-                    self.log_widget.insert('end', formatted_message)
                     end_pos = self.log_widget.index('end-1c')
                     self.log_widget.tag_add(color_tag, start_pos, end_pos)
-                else:
-                    self.log_widget.insert('end', formatted_message)
                 
                 # 自动滚动到底部
                 self.log_widget.see('end')
@@ -99,11 +99,11 @@ class GUILogHandler:
     
     def configure_text_colors(self, text_widget):
         """配置文本组件的颜色标签"""
-        text_widget.tag_configure("debug", foreground="gray")
-        text_widget.tag_configure("info", foreground="white")
-        text_widget.tag_configure("warning", foreground="yellow")
-        text_widget.tag_configure("error", foreground="red")
-        text_widget.tag_configure("critical", foreground="red", background="yellow")
+        text_widget.tag_configure("debug", foreground="#888888")
+        text_widget.tag_configure("info", foreground="#E0E0E0")
+        text_widget.tag_configure("warning", foreground="#FFD700")
+        text_widget.tag_configure("error", foreground="#FF6B6B")
+        text_widget.tag_configure("critical", foreground="#FFFFFF", background="#FF4444")
     
     def redirect_output(self):
         """开始重定向输出"""
@@ -135,6 +135,17 @@ class GUILogHandler:
         current_priority = LogLevel.LEVELS.get(self.current_log_level, 20)
         message_priority = LogLevel.LEVELS.get(level, 20)
         return message_priority >= current_priority
+    
+    def extract_log_level(self, message):
+        """从消息中提取日志级别"""
+        import re
+        # 匹配格式如 [DEBUG] 或 [INFO] 等
+        match = re.search(r'\[(\w+)\]', message)
+        if match:
+            level = match.group(1).upper()
+            if level in LogLevel.LEVELS:
+                return level
+        return None
 
 
 class ProgressCallback:

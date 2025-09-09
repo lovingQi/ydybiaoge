@@ -382,11 +382,11 @@ Excel IP地址处理工具 v2.1
     
     def configure_log_colors(self):
         """配置日志颜色标签"""
-        self.log_text.tag_configure("debug", foreground="gray")
+        self.log_text.tag_configure("debug", foreground="#888888")
         self.log_text.tag_configure("info", foreground="#E0E0E0")
-        self.log_text.tag_configure("warning", foreground="yellow")
-        self.log_text.tag_configure("error", foreground="red")
-        self.log_text.tag_configure("critical", foreground="red", background="yellow")
+        self.log_text.tag_configure("warning", foreground="#FFD700")
+        self.log_text.tag_configure("error", foreground="#FF6B6B")
+        self.log_text.tag_configure("critical", foreground="#FFFFFF", background="#FF4444")
     
     def on_log_level_changed(self, event=None):
         """日志级别改变时的回调"""

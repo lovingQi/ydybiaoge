@@ -307,10 +307,10 @@ class ExcelProcessor:
             isp_column = df.iloc[1:, 4]  # 从索引1开始，第五列（索引4）
             
             # 调试：打印第一个元素
-            print(f"ip_column的第一个元素: {ip_column.iloc[0]}")
-            print(f"isp_column的第一个元素: {isp_column.iloc[0]}")
-            print(f"ip_column的长度: {len(ip_column)}")
-            print(f"isp_column的长度: {len(isp_column)}")
+            enhanced_logger.debug(f"ip_column的第一个元素: {ip_column.iloc[0]}")
+            enhanced_logger.debug(f"isp_column的第一个元素: {isp_column.iloc[0]}")
+            enhanced_logger.debug(f"ip_column的长度: {len(ip_column)}")
+            enhanced_logger.debug(f"isp_column的长度: {len(isp_column)}")
 
             # 从第二行开始处理（跳过表头）
             for idx in range(1, len(df)):
